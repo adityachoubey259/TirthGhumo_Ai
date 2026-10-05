@@ -4,7 +4,16 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Integer, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy import func, text, true
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -60,3 +69,11 @@ class TourPackage(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+Index(
+    "uq_tour_packages_name_destination_ci",
+    func.lower(TourPackage.name),
+    func.lower(TourPackage.destination),
+    unique=True,
+)

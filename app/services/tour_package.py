@@ -2,6 +2,7 @@
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.tour_package import TourPackage
@@ -13,7 +14,10 @@ def create_package(db: Session, data: TourPackageCreate) -> TourPackage:
     duplicate = repository.find_duplicate(db, data.name, data.destination)
     if duplicate:
         raise ValueError("Tour package already exists")
-    return repository.create(db, data)
+    try:
+        return repository.create(db, data)
+    except IntegrityError as exc:
+        raise ValueError("Tour package already exists") from exc
 
 
 def get_package(db: Session, package_id: UUID) -> TourPackage:
@@ -44,7 +48,10 @@ def update_package(
     if duplicate:
         raise ValueError("Tour package already exists")
 
-    return repository.update(db, tour_package, data)
+    try:
+        return repository.update(db, tour_package, data)
+    except IntegrityError as exc:
+        raise ValueError("Tour package already exists") from exc
 
 
 def deactivate_package(db: Session, package_id: UUID) -> TourPackage:

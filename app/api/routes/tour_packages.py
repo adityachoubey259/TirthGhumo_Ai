@@ -17,7 +17,13 @@ from app.services import tour_package as service
 router = APIRouter(prefix="/api/v1/tour-packages", tags=["Tour Packages"])
 
 
-@router.post("/", response_model=TourPackageRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=TourPackageRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create Tour Package",
+    description="Create a new tour package.",
+)
 def create_tour_package(
     data: TourPackageCreate,
     db: Session = Depends(get_db),
@@ -31,7 +37,12 @@ def create_tour_package(
         ) from exc
 
 
-@router.get("/", response_model=list[TourPackageRead])
+@router.get(
+    "/",
+    response_model=list[TourPackageRead],
+    summary="Search Tour Packages",
+    description="Search and filter active tour packages.",
+)
 def search_tour_packages(
     search: str | None = None,
     destination: str | None = None,
@@ -59,7 +70,12 @@ def search_tour_packages(
     )
 
 
-@router.get("/{package_id}", response_model=TourPackageRead)
+@router.get(
+    "/{package_id}",
+    response_model=TourPackageRead,
+    summary="Get Tour Package",
+    description="Get a tour package by UUID.",
+)
 def get_tour_package(
     package_id: UUID,
     db: Session = Depends(get_db),
@@ -73,7 +89,12 @@ def get_tour_package(
         ) from exc
 
 
-@router.patch("/{package_id}", response_model=TourPackageRead)
+@router.patch(
+    "/{package_id}",
+    response_model=TourPackageRead,
+    summary="Update Tour Package",
+    description="Partially update a tour package.",
+)
 def update_tour_package(
     package_id: UUID,
     data: TourPackageUpdate,
@@ -93,7 +114,12 @@ def update_tour_package(
         ) from exc
 
 
-@router.patch("/{package_id}/deactivate", response_model=TourPackageRead)
+@router.patch(
+    "/{package_id}/deactivate",
+    response_model=TourPackageRead,
+    summary="Deactivate Tour Package",
+    description="Soft deactivate a tour package.",
+)
 def deactivate_tour_package(
     package_id: UUID,
     db: Session = Depends(get_db),

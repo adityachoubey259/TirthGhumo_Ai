@@ -1,23 +1,33 @@
 from decimal import Decimal
+from pathlib import Path
+import subprocess
+import sys
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
-from app.db.base import Base
-from app.db.session import SessionLocal, engine
+from app.db.session import SessionLocal
 from app.main import app
 from app.models import TourPackage
+from app.repositories import tour_package as repository
 
 
 client = TestClient(app)
 TEST_PREFIX = f"pytest-{uuid4()}"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(scope="module", autouse=True)
 def prepare_database():
-    Base.metadata.create_all(bind=engine)
+    subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=PROJECT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     yield
     with SessionLocal() as db:
         db.execute(delete(TourPackage).where(TourPackage.name.like(f"{TEST_PREFIX}%")))
@@ -112,6 +122,25 @@ def test_patch_duplicate_name_destination_returns_409():
     )
 
     assert response.status_code == 409
+
+
+def test_db_duplicate_rejection_rolls_back_and_allows_next_create(monkeypatch):
+    name = f"{TEST_PREFIX}-db-duplicate"
+    create_package(name, destination="Bali")
+    monkeypatch.setattr(repository, "find_duplicate", lambda *args, **kwargs: None)
+
+    duplicate = client.post(
+        "/api/v1/tour-packages/",
+        json=package_payload(name.upper(), destination="bali"),
+    )
+    recovered = client.post(
+        "/api/v1/tour-packages/",
+        json=package_payload(f"{TEST_PREFIX}-after-rollback", destination="Bali"),
+    )
+
+    assert duplicate.status_code == 409
+    assert duplicate.json()["detail"] == "Tour package already exists"
+    assert recovered.status_code == 201
 
 
 @pytest.mark.parametrize(
@@ -214,3 +243,29 @@ def test_min_price_greater_than_max_price_returns_422():
 
     assert response.status_code == 422
     assert response.json()["detail"] == "min_price cannot be greater than max_price"
+
+
+def test_openapi_schema_exposes_constraints_and_summaries():
+    response = client.get("/openapi.json")
+    schema = response.json()
+    create_schema = schema["components"]["schemas"]["TourPackageCreate"]["properties"]
+
+    assert response.status_code == 200
+    assert create_schema["duration_days"]["exclusiveMinimum"] == 0
+    assert "minimum" in str(create_schema["price"])
+    assert "60000" in str(create_schema["price"])
+    assert schema["paths"]["/api/v1/tour-packages/"]["post"]["summary"] == (
+        "Create Tour Package"
+    )
+
+
+def test_alembic_upgrade_head_smoke():
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "current"],
+        cwd=PROJECT_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    assert "20261006_0001" in result.stdout

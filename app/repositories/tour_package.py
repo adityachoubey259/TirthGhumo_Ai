@@ -31,7 +31,11 @@ def find_duplicate(
 def create(db: Session, data: TourPackageCreate) -> TourPackage:
     tour_package = TourPackage(**data.model_dump())
     db.add(tour_package)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(tour_package)
     return tour_package
 
@@ -43,14 +47,22 @@ def update(
 ) -> TourPackage:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(package, field, value)
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(package)
     return package
 
 
 def deactivate(db: Session, package: TourPackage) -> TourPackage:
     package.is_active = False
-    db.commit()
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(package)
     return package
 
