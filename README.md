@@ -85,4 +85,4 @@ Results return active packages only. Deactivation is a soft delete using `is_act
 python -m pytest -q
 ```
 
-The current suite contains 12 passing tests.
+The current suite contains 15 passing tests.
